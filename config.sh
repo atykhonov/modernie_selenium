@@ -25,3 +25,4 @@ log_path=""
 vbox_user="${USER}"
 mailto="root"
 create_snapshot=False
+nic_hostonly="vboxnet0"

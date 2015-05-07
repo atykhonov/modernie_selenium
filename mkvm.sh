@@ -217,9 +217,13 @@ import_vm() {
 
 # Set VM Network-Config.
 set_network_config() {
-  log "Setting network bridge ${nic_bridge}..."
-  execute "VBoxManage modifyvm \"${vm_name}\" --nic1 bridged --bridgeadapter1 \"${nic_bridge}\""
-  chk error $? "Could not set Bridge"
+  log "Setting network hostonly ${nic_hostonly}..."
+  execute "VBoxManage modifyvm \"${vm_name}\" --nic1 hostonly --hostonlyadapter1 \"${nic_hostonly}\""
+  chk error $? "Could not set host-only"
+
+  log "Setting network nat ${nic_bridge}..."
+  execute "VBoxManage modifyvm \"${vm_name}\" --nic2 nat"
+  chk error $? "Could not set nat"
 }
 
 # Find and set free Port for RDP-Connection.
@@ -583,6 +587,13 @@ activate_vm() {
   execute_os_specific ex_activate_vm
 }
 
+update_hosts_file() {
+  # Create a hosts file
+  ifconfig ${nic_hostonly} | grep "inet " |awk '{print $2 " hubhost"}' > /tmp/hosts
+  # Send it to the VM
+  copyto hosts /tmp/ "C:/Windows/System32/drivers/etc/"
+}
+
 get_vm_info
 import_vm
 set_network_config
@@ -598,6 +609,7 @@ install_firefox
 install_chrome
 install_selenium
 configure_clipboard
+update_hosts_file
 activate_vm
 
 if [ "${create_snapshot}" = "True" ]; then
