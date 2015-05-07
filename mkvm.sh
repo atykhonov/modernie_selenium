@@ -48,7 +48,7 @@ copyto() {
   then
     echo "Local file '${2}${1}' doesn't exist"
   fi
-  execute "VBoxManage guestcontrol \"${vm_name}\" copyto \"${2}${1}\" \"${3}${1}\" --username 'IEUser' --password 'Passw0rd!'"
+  execute "VBoxManage guestcontrol \"${vm_name}\" copyto ${2}${1} '${3}${1}' --username 'IEUser' --password 'Passw0rd!'"
 }
 
 # Loop VBoxManage guestcontrol commands as they are unreliable.
@@ -134,6 +134,9 @@ execute_os_specific() {
     WindowsVista)
       ${1}_wv
     ;;
+    WindowsVista_64)
+      ${1}_wv
+    ;;
     Windows7)
       ${1}_w7
     ;;
@@ -141,6 +144,7 @@ execute_os_specific() {
       ${1}_w8
     ;;
     *)
+      echo "OS Type: ${vm_os_type}"
       chk skip 1 "Unexpected OS-Type, skipping ${1}..."
     ;;
   esac
@@ -279,7 +283,7 @@ disable_uac() {
 # Start the VM; Wait some seconds afterwards to give the VM time to start up completely.
 start_vm() {
   log "Starting VM ${vm_name}..."
-  VBoxManage startvm "${vm_name}" --type headless
+  VBoxManage startvm "${vm_name}"
   chk fatal $? "Could not start VM"
   waiting 60
 }
@@ -312,9 +316,9 @@ disable_firewall() {
 
 # Create C:\Temp\; Most Functions who copy files to the VM are relying on this folder and will fail is he doesn't exists.
 create_temp_path() {
-  vm_temp="C:\\Temp\\"
+  vm_temp="C:/Temp/"
   log "Creating ${vm_temp}..."
-  execute "VBoxManage guestcontrol \"${vm_name}\" createdirectory \"${vm_temp}\" --username 'IEUser' --password 'Passw0rd!'"
+  execute "VBoxManage guestcontrol \"${vm_name}\" createdirectory '${vm_temp}' --username 'IEUser' --password 'Passw0rd!'"
   chk fatal $? "Could not create ${vm_temp}"
 }
 
@@ -323,12 +327,12 @@ set_ie_config() {
   log "Apply IE Protected-Mode Settings..."
   #execute "VBoxManage guestcontrol \"${vm_name}\" copyto \"${ie_protectedmode_reg}\" "${vm_temp}" --username 'IEUser' --password 'Passw0rd!'"
   copyto "${ie_protectedmode_reg}" "$tools_path" "$vm_temp"
-  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:\\Windows\\Regedit.exe' --username 'IEUser' --password 'Passw0rd!' -- /s '${vm_temp}ie_protectedmode.reg'"
+  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:\\Windows\\Regedit.exe' --username 'IEUser' --password 'Passw0rd!' -- /s ${vm_temp}ie_protectedmode.reg"
   chk error $? "Could not apply IE Protected-Mode-Settings"
   log "Disabling IE-Cache..."
   #execute "VBoxManage guestcontrol \"${vm_name}\" copyto \"${ie_cache_reg}\" "${vm_temp}" --username 'IEUser' --password 'Passw0rd!'"
   copyto ie_disablecache.reg "${tools_path}" "${vm_temp}"
-  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:\\Windows\\Regedit.exe' --username 'IEUser' --password 'Passw0rd!' -- /s '${vm_temp}ie_disablecache.reg'"
+  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:\\Windows\\Regedit.exe' --username 'IEUser' --password 'Passw0rd!' -- /s ${vm_temp}ie_disablecache.reg"
   chk error $? "Could not disable IE-Cache"
 }
 
@@ -337,7 +341,7 @@ install_java() {
   log "Installing Java..."
   #execute "VBoxManage guestcontrol \"${vm_name}\" copyto \"${tools_path}${java_exe}\" "${vm_temp}" --username 'IEUser' --password 'Passw0rd!'"
   copyto "${java_exe}" "${tools_path}" "${vm_temp}"
-  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image \"${vm_temp}${java_exe}\" --username 'IEUser' --password 'Passw0rd!' -- /s"
+  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image ${vm_temp}${java_exe} --username 'IEUser' --password 'Passw0rd!' -- /s"
   chk error $? "Could not install Java"
   waiting 120
 }
@@ -346,7 +350,7 @@ install_java() {
 install_firefox() {
   log "Installing Firefox..."
   copyto "${firefox_exe}" "${tools_path}" "${vm_temp}"
-  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image \"${vm_temp}${firefox_exe}\" --username 'IEUser' --password 'Passw0rd!' -- /S"
+  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image ${vm_temp}${firefox_exe} --username 'IEUser' --password 'Passw0rd!' -- /S"
   chk error $? "Could not install Firefox"
   waiting 120
 }
@@ -365,7 +369,7 @@ install_chrome() {
   log "Installing Chrome..."
   #execute "VBoxManage guestcontrol \"${vm_name}\" copyto \"${tools_path}${chrome_exe}\" "${vm_temp}" --username 'IEUser' --password 'Passw0rd!'"
   copyto "${chrome_exe}" "${tools_path}" "${vm_temp}"
-  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:/Windows/System32/msiexec.exe' --username 'IEUser' --password 'Passw0rd!' -- /qn /i \"${vm_temp}${chrome_exe}\""
+  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:/Windows/System32/msiexec.exe' --username 'IEUser' --password 'Passw0rd!' -- /qn /i ${vm_temp}${chrome_exe}"
   chk error $? "Could not install Chrome"
   waiting 120
   install_chrome_driver
@@ -423,7 +427,7 @@ ie11_driver_reg() {
     copyto ie11_win32.reg "${tools_path}" "${vm_temp}"
     chk skip $? "Could not copy ie11_win32.reg"
     log "Setting ie11_win32.reg..."
-    execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:\\Windows\\Regedit.exe' --username 'IEUser' --password 'Passw0rd!' -- /s '${vm_temp}ie11_win32.reg'"
+    execute "VBoxManage guestcontrol \"${vm_name}\" execute --image 'C:\\Windows\\Regedit.exe' --username 'IEUser' --password 'Passw0rd!' -- /s ${vm_temp}ie11_win32.reg"
     chk skip $? "Could not set ie11_win32.reg"
   fi
 }
@@ -535,7 +539,7 @@ rename_vm() {
   copyto rename.bat '/tmp/' "${vm_temp}"
   chk skip $? "Could not copy rename.bat"
   log "Launch rename.bat..."
-  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image '${vm_temp}rename.bat' --username 'IEUser' --password 'Passw0rd!'"
+  execute "VBoxManage guestcontrol \"${vm_name}\" execute --image ${vm_temp}rename.bat --username 'IEUser' --password 'Passw0rd!'"
   chk skip $? "Could not change Hostname"
   waiting 5
 }
